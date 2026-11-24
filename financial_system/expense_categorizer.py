@@ -2,13 +2,22 @@ def categorize_expense(description):
 
     description = description.lower()
 
-    if "naivas" in description or "supermarket" in description:
+    if any(
+        word in description
+        for word in ("naivas", "supermarket", "shopping", "shop", "clothes")
+    ):
         return "Shopping"
 
-    elif "uber" in description or "matatu" in description:
+    elif any(
+        word in description
+        for word in ("uber", "matatu", "transport", "bus", "taxi", "fuel")
+    ):
         return "Transport"
 
-    elif "airtime" in description or "safaricom" in description:
+    elif any(
+        word in description
+        for word in ("airtime", "safaricom", "communication", "internet", "data")
+    ):
         return "Communication"
 
     elif "kplc" in description or "electricity" in description:
@@ -19,20 +28,3 @@ def categorize_expense(description):
 
     else:
         return "Other"
-
-
-# Test the categorisation system
-
-transactions = [
-    "Naivas Supermarket",
-    "Uber Trip",
-    "Safaricom Airtime",
-    "KPLC Electricity",
-    "Restaurant Food",
-    "Unknown Payment"
-]
-
-for transaction in transactions:
-    category = categorize_expense(transaction)
-
-    print(transaction, "=", category)

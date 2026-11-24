@@ -1,0 +1,45 @@
+import io
+import unittest
+from contextlib import redirect_stdout
+from unittest.mock import patch
+
+import main
+from financial_system.expense_manager import calculate_total, expenses
+from financial_system.mpesa_processor import process_mpesa_sms
+
+
+class MpesaProcessorTests(unittest.TestCase):
+    def tearDown(self):
+        expenses.clear()
+
+    def test_income_sms_is_recorded_as_income(self):
+        message = "QBC456XYZ1 Confirmed. Ksh5,000.00 received from Employer."
+        transaction = process_mpesa_sms(message)
+        self.assertEqual(transaction["transaction_type"], "Income")
+        self.assertEqual(transaction["amount"], 5000.0)
+
+        with patch("builtins.input", side_effect=["2", message, ""]):
+            with redirect_stdout(io.StringIO()):
+                records = main.record_expenses()
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["transaction_type"], "Income")
+        self.assertEqual(records[0]["category"], "Income")
+
+    def test_zero_amount_sms_is_rejected(self):
+        message = "QAB123XYZ0 Confirmed. Ksh0.00 paid to Naivas Supermarket."
+        self.assertIsNone(process_mpesa_sms(message))
+
+    def test_expense_total_excludes_income(self):
+        expenses.extend([
+            {"amount": 5000.0, "transaction_type": "Income"},
+            {"amount": 700.0, "transaction_type": "Expense"},
+        ])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            calculate_total()
+        self.assertIn("700.0", output.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,44 +1,81 @@
 import json
 import os
+import anthropic
 from dotenv import load_dotenv
-from openai import OpenAI
+
 
 load_dotenv()
 
 
-def get_ai_response(system_prompt, user_prompt):
-  api_key = os.getenv("OPENAI_API_KEY")
+def get_ai_response(
+    system_prompt,
+    user_prompt=None,
+    financial_data=None,
+    messages=None,
+    allow_offline_fallback=True,
+):
+    api_key = os.getenv("ANTHROPIC_API_KEY")
 
-  # Use a sample response while testing without a paid API key
-  if not api_key or api_key == "your_api_key_here":
-    sample_data = {
-        "spending_analysis": (
-            "You spent KES 1,000 out of your KES 5,000 income."
-        ),
-        "largest_category": "Food (KES 700)",
-        "saving_suggestions": [
-            "Cook more meals at home to reduce food costs.",
-            "Plan daily transport trips ahead to save money.",
-        ],
-        "financial_advice": (
-            "You saved KES 4,000 this period, which is a good habit. Keep"
-            " tracking your daily expenses."
-        ),
-    }
-    return json.dumps(sample_data)
+    if not api_key or api_key == "your_api_key_here":
+        if allow_offline_fallback and financial_data is not None:
+            total_income = float(financial_data.get("total_income", 0))
+            total_expenses = float(financial_data.get("total_expenses", 0))
+            balance = float(
+                financial_data.get("balance", total_income - total_expenses)
+            )
+            categories = financial_data.get("categories", {})
+            largest_category = (
+                max(categories, key=categories.get)
+                if categories
+                else "No expenses recorded"
+            )
+            fallback = {
+                "spending_analysis": (
+                    f"You recorded KES {total_expenses:,.2f} in expenses and "
+                    f"KES {total_income:,.2f} in income."
+                ),
+                "largest_category": (
+                    f"{largest_category} "
+                    f"(KES {categories[largest_category]:,.2f})"
+                    if categories
+                    else largest_category
+                ),
+                "saving_suggestions": [
+                    "Review your largest spending category for expenses you can reduce.",
+                    "Keep recording transactions to identify spending patterns over time.",
+                    "Set a weekly spending limit for non-essential purchases.",
+                ],
+                "financial_advice": (
+                    f"Your recorded income minus expenses is KES {balance:,.2f}. "
+                    "Keep tracking expenses to support your budgeting decisions."
+                ),
+            }
+            return json.dumps(fallback)
 
-  # Connect to OpenAI once a real API key is added to .env
-  try:
-    client = OpenAI(api_key=api_key)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not configured; the AI conversation "
+            "cannot continue."
+        )
+
+    if messages is None:
+        if user_prompt is None:
+            raise ValueError("A user prompt or conversation history is required.")
+        request_messages = [{"role": "user", "content": user_prompt}]
+    else:
+        request_messages = messages
+
+    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=request_messages,
+        )
+    except anthropic.APIError as error:
+        raise RuntimeError(f"Anthropic API request failed: {error}") from error
+
+    return "\n".join(
+        block.text for block in response.content
+        if getattr(block, "type", None) == "text"
     )
-    return response.choices[0].message.content
-
-  except Exception as error:
-    print("Error getting AI response:", error)
-    return ""

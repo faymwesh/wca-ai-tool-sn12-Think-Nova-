@@ -1,13 +1,29 @@
 import json
 
-def validate_ai_response(response):
-  required_fields = [
-      "spending_analysis",
-      "largest_category",
-      "saving_suggestions",
-      "financial_advice",
-  ]
 
+def validate_conversation_response(response):
+  if not isinstance(response, str):
+    return None
+
+  try:
+    data = json.loads(response)
+  except json.JSONDecodeError:
+    return None
+
+  if not isinstance(data, dict):
+    return None
+
+  if data.get("type") != "answer":
+    return None
+
+  message = data.get("message")
+  if not isinstance(message, str) or not message.strip():
+    return None
+
+  return {"type": "answer", "message": message.strip()}
+
+
+def validate_ai_response(response):
   try:
     # Convert JSON text into a Python dictionary
     data = json.loads(response)
@@ -18,18 +34,18 @@ def validate_ai_response(response):
       return None
 
     # Check that all required fields exist and are not empty
-    for field in required_fields:
-      if field not in data or not data[field]:
-        print(f"Validation error: Missing or empty field '{field}'.")
+    for field in ("spending_analysis", "largest_category", "financial_advice"):
+      if not isinstance(data.get(field), str) or not data[field].strip():
         return None
 
-    # Make sure saving_suggestions is a list of strings
-    if not isinstance(data["saving_suggestions"], list):
-      print("Validation error: 'saving_suggestions' must be a list.")
+    suggestions = data.get("saving_suggestions")
+    if (
+        not isinstance(suggestions, list)
+        or len(suggestions) != 3
+        or any(not isinstance(item, str) or not item.strip() for item in suggestions)
+    ):
       return None
 
     return data
-
-  except json.JSONDecodeError as error:
-    print("Invalid JSON format:", error)
+  except (json.JSONDecodeError, TypeError):
     return None
