@@ -1,32 +1,38 @@
 import re
 
 def process_mpesa_sms(message):
-
     # Extract transaction code
     code = re.search(r'\b[A-Z0-9]{10}\b', message)
 
     # Extract amount
-    amount = re.search(r'Ksh([\d,]+\.\d{2})', message, re.IGNORECASE)
+    amount = re.search(
+        r'Ksh\s*([\d,]+\.\d{2})',
+        message,
+        re.IGNORECASE
+    )
 
-    # Extract transaction type
-    if "received" in message.lower():
+    # Identify transaction type
+    message_lower = message.lower()
+
+    if "received" in message_lower:
         transaction_type = "Income"
-
-    elif "paid" in message.lower() or "sent" in message.lower():
+    elif "paid" in message_lower or "sent" in message_lower:
         transaction_type = "Expense"
-
     else:
         transaction_type = "Unknown"
 
-    # Display extracted information
-    print("Transaction Code:", code.group() if code else "Not found")
+    # Extract description
+    description = "Unknown"
+    if "paid to" in message_lower:
+        description = message.split("paid to", 1)[1].strip().rstrip(".")
+    elif "received from" in message_lower:
+        description = message.split("received from", 1)[1].strip().rstrip(".")
 
-    print("Amount:", amount.group(1) if amount else "Not found")
-
-    print("Transaction Type:", transaction_type)
-
-
-# Sample M-Pesa SMS
-sms = "QAB123XYZ0 Confirmed. Ksh500.00 paid to Naivas Supermarket."
-
-process_mpesa_sms(sms)
+    # Return structured transaction data
+    return {
+        "transaction_id": code.group() if code else None,
+        "amount": float(amount.group(1).replace(",", "")) if amount else None,
+        "transaction_type": transaction_type,
+        "description": description,
+        "category": "Uncategorised"
+    }
