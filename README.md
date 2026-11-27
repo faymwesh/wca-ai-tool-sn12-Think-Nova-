@@ -1,75 +1,74 @@
 # M-Pesa Expense Coach
 
-**Group:** THINK NOVA  
-**Repository:** https://github.com/faymwesh/wca-ai-tool-sn12-Think-Nova-  
-**Group members:** Add each member's full name and GitHub username before submission.
+A command-line expense tracker that records M-Pesa transactions, calculates
+income and expenses, answers basic financial questions, and creates financial
+summaries.
 
-## What it does
+# Features
 
-M-Pesa Expense Coach is a command-line tool for recording and reviewing income
-and expenses. Transactions can be entered manually or parsed from pasted
-M-Pesa SMS messages. The app categorizes expenses, calculates totals and
-balances, saves sessions as JSON, and can summarize a saved session.
+- Record expenses manually or paste M-Pesa confirmation messages.
+- Enter additional income manually, or record income from M-Pesa messages.
+- Calculate income, expenses, balance, and expense totals by category.
+- Ask follow-up questions about the current session's transactions.
+- Generate a financial summary with Anthropic, or use a local summary if AI
+  summary generation is unavailable.
+- Save sessions as JSON files in `sessions/` and view or regenerate summaries
+  later.
 
-## Requirements
+# Requirements
 
-- Python 3
+- Python
 - Packages listed in `requirements.txt`
-- An Anthropic API key for live AI conversation and AI-generated summaries
+- An Anthropic API key for AI-powered conversation and summaries. Without a
+  configured key, summaries use a local fallback; AI conversation requires a
+  key.
 
-## Setup on Windows
+# Setup
 
-From the repository folder:
+From the project directory, create and activate a virtual environment in
+PowerShell, then install the dependencies:
 
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+ powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-Create a `.env` file in the repository root and add your own Anthropic API key:
+Create or edit a `.env` file in the project root and add your API key:
 
-```text
+`text
 ANTHROPIC_API_KEY=your_anthropic_api_key
-```
 
-Do not commit `.env` or share the key. If the API key is rejected or the API is
-unavailable, the app reports the error and can generate a local summary from
-the recorded totals.
 
-## Run
+Keep `.env private; it is excluded from Git.
+
+# Run
 
 ```powershell
 python main.py
-```
+``
 
-The menu provides:
+The main menu lets you start a session, view a saved session, ask a financial
+question about the loaded session, exit, or regenerate a saved summary.
 
-1. Start a session and record expenses manually or from M-Pesa SMS.
-2. Open a saved session.
-3. Ask a calculation question about the loaded session.
-4. Exit.
-5. Regenerate and save a summary for a selected session.
-
-Saved sessions are written to the project's `sessions/` folder. Session files
-may contain personal financial data and are excluded from Git. The
-`samples/demo_session.json` file contains fictional example data.
+During a new session, choose manual expense entry or M-Pesa SMS input. After
+that, enter any additional income not already recorded, or press Enter to skip.
+When finished asking follow-up questions, type `done` to generate the final
+summary.
 
 ## Tests
 
-Run the local tests with:
+Run the test suite with:
 
 ```powershell
-python -m unittest -v
+python -m unittest discover -v
 ```
 
-The draft written report is `THINK_NOVA_Project_Report_DRAFT.docx`. It includes
-the required sections and source appendix, but member names and individual.
+# Project layout
 
-## Submission details to complete
-
-- Add all group members' names and GitHub usernames above.
-- Rehearse the live demo and ensure every member participates.
-- Each member must make at least three meaningful commits to the shared
-  repository.
-- Complete the written report and each student's individual reflection.
+- main.py — command-line menu and session workflow
+- `ai_handler.py`, `ai_summary.py`, `prompts.py` — AI requests, prompts, and
+  summary handling
+- `financial_system/` — M-Pesa parsing, expense categorization, calculations,
+  and transaction storage
+- `test_.py` — automated tests
