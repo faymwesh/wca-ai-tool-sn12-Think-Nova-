@@ -18,13 +18,42 @@ class MpesaProcessorTests(unittest.TestCase):
         self.assertEqual(transaction["transaction_type"], "Income")
         self.assertEqual(transaction["amount"], 5000.0)
 
-        with patch("builtins.input", side_effect=["2", message, ""]):
+        with patch("builtins.input", side_effect=["2", message, "", ""]):
             with redirect_stdout(io.StringIO()):
                 records = main.record_expenses()
 
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0]["transaction_type"], "Income")
         self.assertEqual(records[0]["category"], "Income")
+
+    def test_manual_income_uses_user_entered_amount(self):
+        with patch(
+            "builtins.input",
+            side_effect=["1", "", "12,500.50", "Salary"],
+        ):
+            with redirect_stdout(io.StringIO()):
+                records = main.record_expenses()
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["amount"], 12500.5)
+        self.assertEqual(records[0]["description"], "Salary")
+        self.assertEqual(records[0]["transaction_type"], "Income")
+        self.assertEqual(records[0]["category"], "Income")
+
+    def test_invalid_manual_income_is_rejected_before_valid_amount(self):
+        with patch(
+            "builtins.input",
+            side_effect=["1", "", "not-an-amount", "0", "2500", ""],
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                records = main.record_expenses()
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["amount"], 2500)
+        self.assertEqual(output.getvalue().count(
+            "Enter a valid income amount greater than zero."
+        ), 2)
 
     def test_zero_amount_sms_is_rejected(self):
         message = "QAB123XYZ0 Confirmed. Ksh0.00 paid to Naivas Supermarket."

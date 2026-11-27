@@ -50,7 +50,7 @@ class AIConversationTests(unittest.TestCase):
 
         self.assertEqual(response, '{"type":"answer","message":"KES 450."}')
         anthropic_client.return_value.messages.create.assert_called_once_with(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-5-5",
             max_tokens=1024,
             system="system instructions",
             messages=history,

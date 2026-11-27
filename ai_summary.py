@@ -124,10 +124,11 @@ def generate_ai_summary(financial_data, conversation_history=None):
 
 # Test block to verify your code works on its own
 if __name__ == "__main__":
+  income = float(input("Enter total income (KES): ").strip().replace(",", ""))
   test_data = {
-      "total_income": 5000.0,
+      "total_income": income,
       "total_expenses": 1000.0,
-      "balance": 4000.0,
+      "balance": income - 1000.0,
       "categories": {"Food": 700.0, "Transport": 300.0},
   }
 

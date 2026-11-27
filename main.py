@@ -21,11 +21,12 @@ load_dotenv()
 
 
 SESSIONS_DIR = Path(__file__).resolve().parent / "sessions"
+LEGACY_SUMMARY_ERROR = "Could not generate a valid financial summary."
 current_transactions = []
 
 
 def record_expenses():
-    """Collect expenses manually or from pasted M-Pesa confirmation messages."""
+    """Collect expenses and optional manually entered income."""
     recorded_expenses.clear()
 
     while True:
@@ -89,6 +90,31 @@ def record_expenses():
                 )
                 entry.update(transaction)
                 entry["category"] = category
+
+    print("\nEnter any additional income not already recorded (optional).")
+    while True:
+        amount_text = input(
+            "Income amount (KES), or leave blank to skip: "
+        ).strip().replace(",", "")
+        if not amount_text:
+            break
+        try:
+            amount = Decimal(amount_text)
+        except InvalidOperation:
+            print("Enter a valid income amount greater than zero.")
+            continue
+        if not amount.is_finite() or amount <= 0:
+            print("Enter a valid income amount greater than zero.")
+            continue
+
+        source = input("Income source (optional): ").strip() or "Income"
+        entry = add_expense(source, float(amount), "Income")
+        entry.update({
+            "description": source,
+            "transaction_type": "Income",
+            "date": datetime.now().date().isoformat(),
+        })
+        break
 
     return list(recorded_expenses)
 
@@ -182,7 +208,7 @@ def start_session():
     try:
         expense_data = record_expenses()
         if not expense_data:
-            print("\nNo expenses recorded; session was not saved.")
+            print("\nNo transactions recorded; session was not saved.")
             return
         current_transactions = list(expense_data)
         conversation = run_conversation(expense_data)
@@ -227,10 +253,26 @@ def view_session():
             print("Invalid selection.")
             return
 
-        with files[choice - 1].open(encoding="utf-8") as file:
+        file_path = files[choice - 1]
+        with file_path.open(encoding="utf-8") as file:
             session = json.load(file)
 
         summary = session["summary"]
+        expenses = session.get("expense_data", [])
+        if summary == LEGACY_SUMMARY_ERROR:
+            if not isinstance(expenses, list):
+                raise ValueError("The saved expense data has an invalid format.")
+
+            summary = generate_local_summary(
+                calculate_financial_data(expenses)
+            )
+            session["summary"] = summary
+            try:
+                with file_path.open("w", encoding="utf-8") as file:
+                    json.dump(session, file, ensure_ascii=False, indent=2)
+            except OSError as error:
+                print(f"Could not save the repaired summary: {error}")
+
         if isinstance(summary, dict):
             summary_text = format_ai_summary(summary)
         elif isinstance(summary, str):
@@ -238,7 +280,6 @@ def view_session():
         else:
             raise ValueError("The saved summary has an invalid format.")
 
-        expenses = session.get("expense_data", [])
         if isinstance(expenses, list):
             current_transactions = expenses
             print("\nRecorded expenses:")
